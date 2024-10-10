@@ -59,7 +59,8 @@ The following tables are included in the database schema:
   Select the directory of the cloned repository and import it.
   
 4. **Build the project**:
-   ```mvn clean install
+   ```bash
+   mvn clean install
 
 5. **Run the application**:
 
