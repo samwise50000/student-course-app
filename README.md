@@ -2,7 +2,7 @@
 
 ## Overview
 
-The School Management System is a Java-based application that uses JPA (Java Persistence API) for Object-Relational Mapping (ORM) to manage various aspects of a school's operations, including student enrollment, course management, and department tracking. This project demonstrates the integration of a MariaDB database with a Java application, showcasing the use of JPA for data persistence, relationships, and the implementation of various database functionalities. The application is developed using **Eclipse IDE**. Project_For_Amir.pdf file contains the project documentation.
+The School Management System is a Java-based application that uses JPA (Java Persistence API) for Object-Relational Mapping (ORM) to manage various aspects of a school's operations, including student enrollment, course management, and department tracking. This project demonstrates the integration of a MariaDB database with a Java application, showcasing the use of JPA for data persistence, relationships, and the implementation of various database functionalities. The application is developed using **Eclipse IDE**. **Project_For_Amir.pdf file contains the project documentation.**
 
 ## Features
 
