@@ -49,7 +49,7 @@ The following tables are included in the database schema:
 
 2. **Set up the database**:
 
-  Run the provided SQL scripts in MariaDB to create the database and tables.
+  Run the provided SQL scripts in MariaDB to create the database and tables. The text file includes all code commands for setupping MariaDB database and the code lines used.
   Ensure that the database connection settings in persistence.xml are configured correctly.
 
 3. **Import the project into Eclipse**:
