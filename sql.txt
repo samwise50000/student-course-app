@@ -1,0 +1,371 @@
+** STEP 1 **
+
+-- Create the database for the School Management System
+CREATE DATABASE SchoolManagementSystem;
+
+-- Use the newly created database
+USE SchoolManagementSystem;
+
+##The database SchoolManagementSystem is created, 
+##and the USE SchoolManagementSystem; command ensures 
+##that the subsequent table creation statements will be executed in that database.
+
+-- Create Department Table (must be created first since it's referenced by other tables)
+CREATE TABLE Department (
+    department_id INT PRIMARY KEY AUTO_INCREMENT,
+    department_name VARCHAR(100)
+);
+
+-- Create Student Table
+CREATE TABLE Student (
+    student_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    date_of_birth DATE,
+    department_id INT,
+    version INT DEFAULT 1,
+    CONSTRAINT fk_department FOREIGN KEY (department_id) REFERENCES Department(department_id)
+);
+
+-- Create Teacher Table
+CREATE TABLE Teacher (
+    teacher_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    department_id INT,
+    CONSTRAINT fk_teacher_department FOREIGN KEY (department_id) REFERENCES Department(department_id)
+);
+
+-- Create Course Table
+CREATE TABLE Course (
+    course_id INT PRIMARY KEY AUTO_INCREMENT,
+    course_name VARCHAR(100),
+    teacher_id INT,
+    department_id INT,
+    CONSTRAINT fk_course_teacher FOREIGN KEY (teacher_id) REFERENCES Teacher(teacher_id),
+    CONSTRAINT fk_course_department FOREIGN KEY (department_id) REFERENCES Department(department_id)
+);
+
+-- Create Enrollment Table (Many-to-Many between Student and Course)
+CREATE TABLE Enrollment (
+    enrollment_id INT PRIMARY KEY AUTO_INCREMENT,
+    student_id INT,
+    course_id INT,
+    enrollment_date DATE,
+    grade DECIMAL(3,2),
+    CONSTRAINT fk_enrollment_student FOREIGN KEY (student_id) REFERENCES Student(student_id),
+    CONSTRAINT fk_enrollment_course FOREIGN KEY (course_id) REFERENCES Course(course_id)
+);
+
+##The Department table is created first because both the Student and Teacher tables reference it via foreign keys.
+##After that, the Student, Teacher, Course, and Enrollment tables are created, maintaining the proper foreign key relationships.
+
+** STEP 2 **
+
+-- Insert into Department
+INSERT INTO Department (department_name) VALUES ('Computer Science');
+INSERT INTO Department (department_name) VALUES ('Mathematics');
+INSERT INTO Department (department_name) VALUES ('Physics');
+
+-- Insert into Student
+INSERT INTO Student (first_name, last_name, date_of_birth, department_id) 
+VALUES ('John', 'Doe', '2001-05-15', 1);
+INSERT INTO Student (first_name, last_name, date_of_birth, department_id) 
+VALUES ('Jane', 'Smith', '2000-11-22', 2);
+
+-- Insert into Teacher
+INSERT INTO Teacher (first_name, last_name, department_id) 
+VALUES ('Alice', 'Brown', 1);
+INSERT INTO Teacher (first_name, last_name, department_id) 
+VALUES ('Bob', 'Green', 2);
+
+-- Insert into Course
+INSERT INTO Course (course_name, teacher_id, department_id) 
+VALUES ('Algorithms', 1, 1);
+INSERT INTO Course (course_name, teacher_id, department_id) 
+VALUES ('Calculus', 2, 2);
+
+-- Alter the table before inserting values into enrollment_date
+ALTER TABLE Enrollment MODIFY grade DECIMAL(5,2);
+
+-- Insert into Enrollment (Students enrolled in courses)
+
+INSERT INTO Enrollment (student_id, course_id, enrollment_date, grade) 
+VALUES (1, 1, '2024-01-15', 95.5);
+INSERT INTO Enrollment (student_id, course_id, enrollment_date, grade) 
+VALUES (2, 2, '2024-01-16', 89.0);
+
+** STEP 3 **
+
+-- Basic Query: Get all students from the 'Computer Science' department
+SELECT s.first_name, s.last_name, d.department_name
+FROM Student s
+JOIN Department d ON s.department_id = d.department_id
+WHERE d.department_name = 'Computer Science';
+
+-- Add an index on department_name to speed up searches by department
+CREATE INDEX idx_department_name ON Department(department_name);
+
+-- Basic Query: Get all courses that John Doe is enrolled in
+SELECT s.first_name, s.last_name, c.course_name
+FROM Student s
+JOIN Enrollment e ON s.student_id = e.student_id
+JOIN Course c ON e.course_id = c.course_id
+WHERE s.first_name = 'John' AND s.last_name = 'Doe';
+
+-- Add indexes to optimize joins between Enrollment, Student, and Course
+CREATE INDEX idx_student_id ON Enrollment(student_id);
+CREATE INDEX idx_course_id ON Enrollment(course_id);
+
+** STEP 4 **
+
+-- Update student information using optimistic locking
+UPDATE Student
+SET first_name = 'Johnny', version = version + 1
+WHERE student_id = 1 AND version = 1;
+
+-- Start a transaction and lock the student row for updating
+START TRANSACTION;
+SELECT * FROM Student WHERE student_id = 1 FOR UPDATE;
+
+-- Perform the update
+UPDATE Student SET first_name = 'Johnathan' WHERE student_id = 1;
+
+-- Commit the transaction
+COMMIT;
+
+** STEP 5 **
+
+CREATE TRIGGER update_course_student_count
+AFTER INSERT ON Enrollment
+FOR EACH ROW
+UPDATE Course 
+SET student_count = student_count + 1 
+WHERE course_id = NEW.course_id;
+
+-- TEST STEP 5 --
+
+#Make sure the Course table has a student_count column. If not, add it:
+
+ALTER TABLE Course ADD student_count INT DEFAULT 0;
+
+#Insert a new row into the Enrollment table and check if the student_count in the corresponding Course is updated
+
+INSERT INTO Enrollment (student_id, course_id, enrollment_date, grade)
+VALUES (1, 1, '2024-02-15', 87.0);
+
+#Run a query to see if the student_count in the Course table has increased by 1
+
+SELECT course_name, student_count 
+FROM Course 
+WHERE course_id = 1;
+
+** STEP 6 **
+
+#pom.xml
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>student-course-app</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <dependencies>
+        <!-- JPA and Hibernate Dependencies -->
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>5.6.14.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.persistence</groupId>
+            <artifactId>javax.persistence-api</artifactId>
+            <version>2.2</version>
+        </dependency>
+        <!-- MySQL Connector Dependency -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.33</version>
+        </dependency>
+        <!-- JUnit for Testing (optional) -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <version>3.1.2</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <source>1.8</source>  <!-- Set your Java version here -->
+                    <target>1.8</target>  <!-- Set your Java version here -->
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+
+#Student Entity
+
+package com.example.entities;
+
+import javax.persistence.*;
+import java.util.Date;
+
+@Entity
+public class Student {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int student_id;
+
+    private String first_name;
+    private String last_name;
+    private Date date_of_birth;
+
+    @ManyToOne
+    @JoinColumn(name = "department_id")
+    private Department department;
+
+    @Version
+    private int version;
+
+    // Getters and Setters
+}
+
+#Teacher Entity
+
+package com.example.entities;
+
+import javax.persistence.*;
+
+@Entity
+public class Teacher {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int teacher_id;
+
+    private String first_name;
+    private String last_name;
+    private String email;
+
+    @ManyToOne
+    @JoinColumn(name = "department_id")
+    private Department department;
+
+    // Getters and Setters
+}
+
+#Course Entity
+
+package com.example.entities;
+
+import javax.persistence.*;
+
+@Entity
+public class Course {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int course_id;
+
+    private String course_name;
+    private int student_count;
+
+    @ManyToOne
+    @JoinColumn(name = "teacher_id")
+    private Teacher teacher;
+
+    // Getters and Setters
+}
+
+#Enrollment Entity
+
+package com.example.entities;
+
+import javax.persistence.*;
+import java.util.Date;
+
+@Entity
+public class Enrollment {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int enrollment_id;
+
+    @ManyToOne
+    @JoinColumn(name = "student_id")
+    private Student student;
+
+    @ManyToOne
+    @JoinColumn(name = "course_id")
+    private Course course;
+
+    private Date enrollment_date;
+    private float grade;
+
+    // Getters and Setters
+}
+
+#Department Entity
+
+package com.example.entities;
+
+import javax.persistence.*;
+
+@Entity
+public class Department {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int department_id;
+
+    private String department_name;
+
+    // Getters and Setters
+}
+
+#persistence.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence" version="2.2">
+    <persistence-unit name="student-course-app" transaction-type="RESOURCE_LOCAL">
+        
+        <!-- JPA Provider -->
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+
+        <!-- Database Connection Settings -->
+        <properties>
+            <!-- JDBC Connection -->
+            <property name="javax.persistence.jdbc.driver" value="org.mariadb.jdbc.Driver"/>
+            <property name="javax.persistence.jdbc.url" value="jdbc:mariadb://localhost:3306/your_database_name"/>
+            <property name="javax.persistence.jdbc.user" value="your_username"/>
+            <property name="javax.persistence.jdbc.password" value="your_password"/>
+            
+            <!-- Hibernate Properties -->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.MariaDB103Dialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+        </properties>
+
+    </persistence-unit>
+</persistence>
